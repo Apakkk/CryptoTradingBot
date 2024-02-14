@@ -8,15 +8,13 @@ from tradingview_ta import  TA_Handler, Interval
 
 client = UMFutures(key = api, secret=secret)
 
-# 0.012 means +1.2%, 0.009 is -0.9%
 tp = 0.05
 sl = 0.05
 volume = 20
 leverage = 5
 type = 'ISOLATED'
-qty = 100  # Amount of concurrent opened positions
+qty = 100
 
-# getting your futures balance in USDT
 def get_balance_usdt():
     try:
         response = client.balance(recvWindow=6000)
@@ -30,19 +28,31 @@ def get_balance_usdt():
                 error.status_code, error.error_code, error.error_message
             )
         )
-
-
-# Getting all available symbols on the Futures ('BTCUSDT', 'ETHUSDT', ....)
+def rsi_signal(symbol):
+    coin = TA_Handler(
+        symbol=symbol+"USDT",
+        screener="crypto",
+        exchange="BINANCE",
+        interval=Interval.INTERVAL_4_HOUR
+    )
+    data = coin.get_analysis().indicators
+    data_indicator_rsi = data['RSI']
+    data_indicator_rsi_1 = data['RSI[1]']
+    if data_indicator_rsi > data_indicator_rsi_1:
+        return 'up'
+    elif data_indicator_rsi < data_indicator_rsi_1:
+        return 'down'
+    else:
+        return 'neutral'
 def get_tickers_usdt():
     tickers = []
     resp = client.ticker_price()
     for elem in resp:
-        if 'USDT' in elem['BTC']:
-            tickers.append(elem['BTC'])
+        if 'USDT' in elem['symbol']:
+            tickers.append(elem['symbol'])
     return tickers
 
 
-# Getting candles for the needed symbol, its a dataframe with 'Time', 'Open', 'High', 'Low', 'Close', 'Volume'
 def klines(symbol):
     try:
         resp = pd.DataFrame(client.klines(symbol, '15m'))
@@ -59,7 +69,6 @@ def klines(symbol):
             )
         )
 
-# Set leverage for the needed symbol. You need this bcz different symbols can have different leverage
 def set_leverage(symbol, level):
     try:
         response = client.change_leverage(
@@ -74,7 +83,6 @@ def set_leverage(symbol, level):
         )
 
 
-# The same for the margin type
 def set_mode(symbol, type):
     try:
         response = client.change_margin_type(
@@ -96,16 +104,12 @@ def get_price_precision(symbol):
         if elem['symbol'] == symbol:
             return elem['pricePrecision']
 
-
-# Amount precision. BTC has 3, XRP has 1
 def get_qty_precision(symbol):
     resp = client.exchange_info()['symbols']
     for elem in resp:
         if elem['symbol'] == symbol:
             return elem['quantityPrecision']
 
-
-# Open new order with the last price, and set TP and SL:
 def open_order(symbol, side):
     price = float(client.ticker_price(symbol)['price'])
     qty_precision = get_qty_precision(symbol)
@@ -151,7 +155,7 @@ def open_order(symbol, side):
                     error.status_code, error.error_code, error.error_message
                 )
             )
-# Your current positions (returns the symbols list):
+
 def get_pos():
     try:
         resp = client.get_position_risk()
@@ -172,7 +176,7 @@ def check_orders():
         response = client.get_orders(recvWindow=6000)
         sym = []
         for elem in response:
-            sym.append(elem['BTC'])
+            sym.append(elem['symbol'])
         return sym
     except ClientError as error:
         print(
@@ -180,8 +184,6 @@ def check_orders():
                 error.status_code, error.error_code, error.error_message
             )
         )
-
-# Close open orders for the needed symbol. If one stop order is executed and another one is still there
 def close_open_orders(symbol):
     try:
         response = client.cancel_open_orders(symbol=symbol, recvWindow=6000)
@@ -192,25 +194,6 @@ def close_open_orders(symbol):
                 error.status_code, error.error_code, error.error_message
             )
         )
-
-def rsi_signal(symbol):
-    coin = TA_Handler(
-        symbol=symbol+"USDT",
-        screener="crypto",
-        exchange="BINANCE",
-        interval=Interval.INTERVAL_4_HOUR
-    )
-    kl = klines(symbol)
-    data = coin.get_analysis().indicators
-    data_indicator_rsi = data['RSI']
-    data_indicator_rsi_1 = data['RSI[1]']
-    if data_indicator_rsi > data_indicator_rsi_1:
-        return 'up'
-    elif data_indicator_rsi < data_indicator_rsi_1:
-        return 'down'
-    else:
-        return 'neutral'
-
 symbols = get_tickers_usdt()
 
 while True:

@@ -95,9 +95,6 @@ def set_mode(symbol, type):
                 error.status_code, error.error_code, error.error_message
             )
         )
-
-
-# Price precision. BTC has 1, XRP has 4
 def get_price_precision(symbol):
     resp = client.exchange_info()['symbols']
     for elem in resp:
@@ -197,7 +194,6 @@ def close_open_orders(symbol):
 symbols = get_tickers_usdt()
 
 while True:
-    # we need to get balance to check if the connection is good, or you have all the needed permissions
     balance = get_balance_usdt()
     sleep(1)
     if balance == None:
